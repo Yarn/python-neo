@@ -35,9 +35,10 @@ class PlexonRawIO(BaseRawIO):
     extensions = ['plx']
     rawmode = 'one-file'
 
-    def __init__(self, filename=''):
+    def __init__(self, filename='', *, recalc_end_ts=False):
         BaseRawIO.__init__(self)
         self.filename = filename
+        self.recalc_end_ts = recalc_end_ts
 
     def _source_name(self):
         return self.filename
@@ -236,6 +237,16 @@ class PlexonRawIO(BaseRawIO):
         for d in (bl_annotations, seg_annotations):
             d['rec_datetime'] = rec_datetime
             d['plexon_version'] = global_header['Version']
+        
+        if self.recalc_end_ts:
+            for chan_id in self._data_blocks[1]:
+                chan_ts_max = self._data_blocks[1][chan_id]['timestamp'].max(initial=0)
+                if chan_ts_max > self._last_timestamps:
+                    self._last_timestamps = chan_ts_max
+            for event_id in self._data_blocks[4]:
+                event_ts_max = self._data_blocks[4][event_id]['timestamp'].max(initial=0)
+                if event_ts_max > self._last_timestamps:
+                    self._last_timestamps = event_ts_max
 
     def _segment_t_start(self, block_index, seg_index):
         return 0.
